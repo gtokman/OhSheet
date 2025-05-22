@@ -17,30 +17,23 @@ struct SheetFullScreen: ViewModifier {
     
     func body(content: Content) -> some View {
         content.onAppear {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }),
-               var topController = keyWindow.rootViewController
-            {
-                
-                var presentedControllers: [UIViewController] = []
-                
-                while let presented = topController.presentedViewController,
-                      presented is UIHostingController<AnyView>
-                {
-                    presentedControllers.append(presented)
-                    topController = presented
-                }
-                if let vc = presentedControllers.last, let sheet = vc.sheetPresentationController {
-                    guard let data = Data(base64Encoded: "d2FudHNGdWxsU2NyZWVu"),
-                            let key1 =  String(data: data, encoding: .utf8) else {
+            if let sheet = OhSheetHelper.findSheetPresentationController() {
+                let base64EncodedKeys = [
+                    "d2FudHNGdWxsU2NyZWVu", // wantsFullScreen
+                    "YWxsb3dzSW50ZXJhY3RpdmVEaXNtaXNzV2hlbkZ1bGxTY3JlZW4=" // allowsInteractiveDismissWhenFullScreen
+                ]
+
+                for base64Key in base64EncodedKeys {
+                    guard let data = Data(base64Encoded: base64Key),
+                          let key = String(data: data, encoding: .utf8) else {
+                        // If a key fails to decode, print an error and skip to the next key,
+                        // or return early to match original behavior.
+                        // The original behavior was to return from the function if any key fails.
+                        // So, we should adhere to that.
+                        print("Error: Failed to decode base64 key: \(base64Key)") // Optional: for debugging
                         return
                     }
-                    guard let data2 = Data(base64Encoded: "YWxsb3dzSW50ZXJhY3RpdmVEaXNtaXNzV2hlbkZ1bGxTY3JlZW4="),
-                            let key2 =  String(data: data2, encoding: .utf8) else {
-                        return
-                    }
-                    sheet.setValue(true, forKey: key1)
-                    sheet.setValue(true, forKey: key2)
+                    sheet.setValue(true, forKey: key)
                 }
             }
         }
@@ -51,22 +44,8 @@ struct SheetFullScreenDetents: ViewModifier {
     let detents: Set<UISheetPresentationController.Detent>
     func body(content: Content) -> some View {
         content.onAppear {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }),
-               var topController = keyWindow.rootViewController
-            {
-                
-                var presentedControllers: [UIViewController] = []
-                
-                while let presented = topController.presentedViewController,
-                      presented is UIHostingController<AnyView>
-                {
-                    presentedControllers.append(presented)
-                    topController = presented
-                }
-                if let vc = presentedControllers.last, let sheet = vc.sheetPresentationController {
-                    sheet.detents = Array(detents)
-                }
+            if let sheet = OhSheetHelper.findSheetPresentationController() {
+                sheet.detents = Array(detents)
             }
         }
     }
@@ -82,5 +61,26 @@ public extension UISheetPresentationController.Detent {
             return Self.large()
         }
         return d
+    }
+}
+
+private enum OhSheetHelper {
+    static func findSheetPresentationController() -> UISheetPresentationController? {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let keyWindow = windowScene.windows.first(where: \.isKeyWindow),
+           var topController = keyWindow.rootViewController
+        {
+            var presentedControllers: [UIViewController] = []
+            while let presented = topController.presentedViewController,
+                  presented is UIHostingController<AnyView>
+            {
+                presentedControllers.append(presented)
+                topController = presented
+            }
+            if let vc = presentedControllers.last, let sheet = vc.sheetPresentationController {
+                return sheet
+            }
+        }
+        return nil
     }
 }
