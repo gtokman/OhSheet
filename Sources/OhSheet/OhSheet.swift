@@ -1,27 +1,26 @@
 import SwiftUI
-#if canImport(UIKit)
 import UIKit
-#endif
 
 public extension View {
-    func fullScreenSheet(showGrabber: Bool = false) -> some View {
-        self.modifier(SheetFullScreen(showGrabber: showGrabber))
+    func fullScreenSheet(showGrabber: Bool = false, grabberPosition: CGPoint = .init(x: UIScreen.main.bounds.width / 2, y: 10)) -> some View {
+        self.modifier(SheetFullScreen(showGrabber: showGrabber, position: grabberPosition))
     }
     
-    func sheet(with detents: Set<UISheetPresentationController.Detent>, showGrabber: Bool = false) -> some View {
-        self.modifier(SheetFullScreenDetents(detents: detents, showGrabber: showGrabber))
+    func sheet(with detents: Set<UISheetPresentationController.Detent>, showGrabber: Bool = false, grabberPosition: CGPoint = .init(x: UIScreen.main.bounds.width / 2, y: 10)) -> some View {
+        self.modifier(SheetFullScreenDetents(detents: detents, showGrabber: showGrabber, position: grabberPosition))
     }
 }
 
 struct SheetFullScreen: ViewModifier {
     let showGrabber: Bool
+    let position: CGPoint
     
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .top) {
                 if showGrabber {
                     SheetGrabber()
-                        .position(x: 20, y: 5)
+                        .position(x: position.x, y: position.y)
                 }
             }
             .onAppear {
@@ -40,13 +39,14 @@ struct SheetFullScreen: ViewModifier {
 struct SheetFullScreenDetents: ViewModifier {
     let detents: Set<UISheetPresentationController.Detent>
     let showGrabber: Bool
+    let position: CGPoint
     
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .top) {
                 if showGrabber {
                     SheetGrabber()
-                        .position(x: 20, y: 5)
+                        .position(x: position.x, y: position.y)
                 }
             }
             .onAppear {
@@ -60,10 +60,10 @@ struct SheetFullScreenDetents: ViewModifier {
 public extension UISheetPresentationController.Detent {
     static func full() -> Self {
         guard let data = Data(base64Encoded: "X2Z1bGxEZXRlbnQ="),
-              let key1 =  String(data: data, encoding: .utf8) else {
+              let key =  String(data: data, encoding: .utf8) else {
             return Self.large()
         }
-        guard let d = value(forKey: key1) as? Self else {
+        guard let d = value(forKey: key) as? Self else {
             return Self.large()
         }
         return d
@@ -73,8 +73,8 @@ public extension UISheetPresentationController.Detent {
 private struct SheetGrabber: View {
     var body: some View {
         Capsule()
-            .frame(width: 40, height: 5)
-            .foregroundColor(Color(.systemGray))
+            .frame(width: 36, height: 5)
+            .foregroundColor(Color(uiColor: UIColor(red: 0.69, green: 0.69, blue: 0.74, alpha: 1.00)))
             .ignoresSafeArea()
             .allowsHitTesting(false)
     }
@@ -104,8 +104,12 @@ private func currentSheetPresentationController() -> UISheetPresentationControll
     .sheet(isPresented: $isPresented) {
         VStack {
             Spacer()
-            Text("world")
+            HStack {
+                Text("world")
+                Spacer()
+            }
+            Spacer()
         }
-        .fullScreenSheet()
+        .fullScreenSheet(showGrabber: true)
     }
 }
