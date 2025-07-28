@@ -5,10 +5,6 @@ public extension View {
     func fullScreenSheet(showGrabber: Bool = false, grabberPosition: CGPoint = .init(x: UIScreen.main.bounds.width / 2, y: 10)) -> some View {
         self.modifier(SheetFullScreen(showGrabber: showGrabber, position: grabberPosition))
     }
-    
-    func sheet(with detents: Set<UISheetPresentationController.Detent>, showGrabber: Bool = false, grabberPosition: CGPoint = .init(x: UIScreen.main.bounds.width / 2, y: 10)) -> some View {
-        self.modifier(SheetFullScreenDetents(detents: detents, showGrabber: showGrabber, position: grabberPosition))
-    }
 }
 
 struct SheetFullScreen: ViewModifier {
@@ -24,49 +20,11 @@ struct SheetFullScreen: ViewModifier {
                 }
             }
             .onAppear {
-                if let sheet = currentSheetPresentationController() {
-                    ["d2FudHNGdWxsU2NyZWVu", "YWxsb3dzSW50ZXJhY3RpdmVEaXNtaXNzV2hlbkZ1bGxTY3JlZW4="].forEach {
-                        if let data = Data(base64Encoded: $0),
-                           let key = String(data: data, encoding: .utf8) {
-                            sheet.setValue(true, forKey: key)
-                        }
-                    }
-                }
+                guard let sheet = currentSheetPresentationController() else { return }
+                let dyn = Dynamic(sheet)
+                dyn.wantsFullScreen = true
+                dyn.allowsInteractiveDismissWhenFullScreen = true
             }
-    }
-}
-
-struct SheetFullScreenDetents: ViewModifier {
-    let detents: Set<UISheetPresentationController.Detent>
-    let showGrabber: Bool
-    let position: CGPoint
-    
-    func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .top) {
-                if showGrabber {
-                    SheetGrabber()
-                        .position(x: position.x, y: position.y)
-                }
-            }
-            .onAppear {
-                if let sheet = currentSheetPresentationController() {
-                    sheet.detents = Array(detents)
-                }
-            }
-    }
-}
-
-public extension UISheetPresentationController.Detent {
-    static func full() -> Self {
-        guard let data = Data(base64Encoded: "X2Z1bGxEZXRlbnQ="),
-              let key =  String(data: data, encoding: .utf8) else {
-            return Self.large()
-        }
-        guard let d = value(forKey: key) as? Self else {
-            return Self.large()
-        }
-        return d
     }
 }
 
@@ -92,6 +50,20 @@ private func currentSheetPresentationController() -> UISheetPresentationControll
         return topController.sheetPresentationController
     }
     return nil
+}
+
+@dynamicMemberLookup
+private final class Dynamic {
+    private let base: NSObject
+
+    init(_ base: NSObject) {
+        self.base = base
+    }
+
+    subscript(dynamicMember member: String) -> Any? {
+        get { base.value(forKey: member) }
+        set { base.setValue(newValue, forKey: member) }
+    }
 }
 
 #Preview {
